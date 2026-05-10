@@ -1,98 +1,90 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Link } from "expo-router";
+import { useFocusEffect, useTheme } from "@react-navigation/native";
+import { useCallback } from "react";
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useAppSettings } from "../../src/context/AppContext";
+import { useWardrobeViewModel } from "../../src/viewmodels/useWardrobeViewModel";
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const vm = useWardrobeViewModel();
+  const { refresh } = vm;
+  const { tr, firebaseUid } = useAppSettings();
+  const { colors } = useTheme();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>{tr("appTitle")}</Text>
+      <Text style={[styles.authStatus, { color: colors.text }]}>
+        {firebaseUid ? `● ${tr("signedIn")}` : `○ ${tr("guest")}`}
+      </Text>
+      <TextInput
+        style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+        value={vm.searchQuery}
+        onChangeText={vm.setSearchQuery}
+        placeholder={tr("search")}
+        placeholderTextColor={colors.border}
+      />
+      <View style={styles.row}>
+        <Pressable
+          style={styles.button}
+          onPress={() => vm.setSortType(vm.sortType === "newest" ? "oldest" : "newest")}
+        >
+          <Text style={{ color: colors.text }}>{vm.sortType === "newest" ? tr("sortNewest") : tr("sortOldest")}</Text>
+        </Pressable>
+        <Link href="/add" style={styles.link}>
+          {tr("addItem")}
+        </Link>
+      </View>
+      <View style={styles.row}>
+        {vm.categories.slice(0, 4).map((category) => (
+          <Pressable key={category} style={styles.tag} onPress={() => vm.setCategoryFilter(category)}>
+            <Text style={{ color: colors.text }}>{category}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <FlatList
+        data={vm.visibleItems}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item }) => (
+          <Link
+            href={{ pathname: "/details", params: { id: String(item.id) } }}
+            style={styles.card}
+          >
+            {item.title} - {item.category} ({item.date})
+          </Link>
+        )}
+        ListEmptyComponent={<Text style={{ color: colors.text }}>{tr("noItems")}</Text>}
+      />
+      <View style={styles.row}>
+        <Link href="/settings" style={styles.link}>
+          {tr("settings")}
+        </Link>
+        <Link href="/login" style={styles.link}>
+          {tr("login")}
+        </Link>
+        <Link href="/outfit" style={styles.link}>
+          {tr("remote")}
+        </Link>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flex: 1, padding: 16, gap: 10 },
+  title: { fontSize: 20, fontWeight: "700" },
+  authStatus: { fontSize: 12, opacity: 0.6 },
+  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  button: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 8 },
+  tag: { borderWidth: 1, borderColor: "#ddd", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  card: { padding: 10, borderWidth: 1, borderColor: "#ddd", borderRadius: 8, marginBottom: 8 },
+  link: { color: "#0a7ea4", fontWeight: "600" },
 });

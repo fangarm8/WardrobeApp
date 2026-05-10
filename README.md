@@ -4,6 +4,12 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Get started
 
+0. Use the project Node version
+
+   ```bash
+   nvm use
+   ```
+
 1. Install dependencies
 
    ```bash
